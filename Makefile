@@ -80,12 +80,14 @@ build/test_rt: tests/test_rt.c src/rt.c
 	@mkdir -p build
 	cc -O2 -Wall -fno-builtin -o $@ tests/test_rt.c
 
-test: build/host_vwav build/test_vfs_hook build/abi_open build/test_rt
+test: build/host_vwav build/test_vfs_hook build/abi_open build/test_rt build/webtest/.done
 	python3 tests/test_vwav.py
+	$(MAKE) test-web
 
 # The PC tests without the SH-4 compiler (CI host job): the ABI test skips.
-test-host: build/host_vwav build/test_vfs_hook build/test_rt
+test-host: build/host_vwav build/test_vfs_hook build/test_rt build/webtest/.done
 	CDJ_HOST_ONLY=1 python3 tests/test_vwav.py
+	$(MAKE) test-web
 
 ABI_SRCS = tests/abi/open_main.c src/vfs_hook.c src/vh_stats.c src/putfmt.c src/vwav.c src/vwcheck.c src/crc32.c \
            src/pool.c src/flac_impl.c src/rt.c

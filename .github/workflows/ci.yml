@@ -12,7 +12,10 @@ jobs:
     name: PC tests
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
       - name: Install test tools
         run: sudo apt-get update && sudo apt-get install -y ffmpeg flac
       - name: Run the PC tests
@@ -22,7 +25,10 @@ jobs:
     name: SH-4 build, ABI checks and all tests
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
       - name: Install build and test tools
         run: |
           sudo apt-get update

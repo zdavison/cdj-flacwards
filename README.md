@@ -30,6 +30,10 @@ The FLAC decoder is [dr_flac](https://github.com/mackron/dr_libs). All new code 
 
 This repository contains no AlphaTheta or Pioneer code. It holds only our own code, tools and documentation: no firmware, no patched firmware and no decompiler output. The project does not distribute patched firmware, also not as a release download. To build an update file, download the official CDJ-900 firmware 4.32 package (`CDJ-900v432.zip`) from the [AlphaTheta support site](https://support.alphatheta.com/en-US/articles/21708238994585). The tools check its SHA-256 and patch your own copy on your computer. See `docs/legal-review.md`.
 
+## Patch in the browser
+
+The easiest way: the [patcher page](https://zdavison.github.io/cdj-flacwards/) makes the patched and the rollback update files from your own `CDJ-900v432.zip`, in your browser. Nothing is uploaded. The page gives the same files as `tools/build_patch.py release` and `tools/build_patch.py rollback`.
+
 ## Build
 
 You need Linux, Python 3, `sh-elf-binutils`, and the GCC build dependencies (GMP, MPFR, MPC). For the tests you also need `ffmpeg` and `flac`. The SH-4 calling-convention test needs `qemu-sh4-static` (optional).
@@ -72,7 +76,7 @@ You need Linux, Python 3, `sh-elf-binutils`, and the GCC build dependencies (GMP
 
 ## Safety
 
-- **Make the rollback stick before you install.** Run `python3 tools/build_patch.py rollback`. It makes `out/rollback/C900MAIN.UPD`: the stock 4.32 firmware with header version 4.99, which the updater accepts over any patched version. Copy it to a second FAT32 stick.
+- **Make the rollback stick before you install.** The patcher page gives the rollback file, or run `python3 tools/build_patch.py rollback`. It is the official file with only its header version set to 4.99, so the updater accepts it over any patched version. Copy it to a second FAT32 stick.
 - **To go back to the stock firmware,** install the rollback stick in the same way as an update. The player then reports 4.32.
 - The patch does not run during start-up. It runs only when a track loads or plays. So if a FLAC track causes a problem, the player still starts, and the updater still works.
 - If the player does not start, the rollback stick cannot help. Only a hardware programmer for the main flash chip can then recover it. If you cannot accept that risk, do not install the patch.
