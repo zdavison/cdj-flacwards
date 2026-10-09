@@ -10,6 +10,10 @@ This project adds a patch to the CDJ-900 MAIN firmware 4.32. The patch decodes F
 
 This project has no affiliation with AlphaTheta Corporation, Pioneer DJ or Pioneer Corporation. These companies do not endorse or support this project. They did not approve this modification. "Pioneer DJ", "Pioneer", "CDJ" and "rekordbox" are trademarks of their owners. This document uses these names only to identify the hardware and the file formats.
 
+## Quickstart
+
+https://zdavison.github.io/cdj-flacwards/
+
 ## Status
 
 We tested the patch on one CDJ-900 with firmware 4.32.
