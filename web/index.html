@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cdj-flacwards patcher</title>
+<link rel="stylesheet" href="style.css">
+<script type="module" src="ui.js"></script>
+</head>
+<body>
+<main>
+<h1>cdj-flacwards</h1>
+<p class="lead">FLAC playback for the Pioneer DJ CDJ-900 (firmware 4.32). This page makes the update file from your own copy of the official firmware. The file stays on your computer: nothing is uploaded.</p>
+
+<section class="warning">
+<p><strong>Warning:</strong> This patch changes the firmware of your player. A firmware update can make a player unusable, and a modified firmware can void its warranty. You use it at your own risk. There is no warranty.</p>
+<p>This project is not affiliated with, endorsed by or supported by AlphaTheta Corporation, Pioneer DJ or Pioneer Corporation. "Pioneer DJ", "Pioneer", "CDJ" and "rekordbox" are trademarks of their owners.</p>
+</section>
+
+<section>
+<h2>1. Get the official firmware</h2>
+<p>Download <code>CDJ-900v432.zip</code> (firmware 4.32) from the <a href="https://support.alphatheta.com/en-US/articles/21708238994585">AlphaTheta support site</a>.</p>
+</section>
+
+<section>
+<h2>2. Select it here</h2>
+<label id="drop" for="file">Drop <code>CDJ-900v432.zip</code> or <code>C900MAIN.UPD</code> here, or click to select it.
+<input id="file" type="file" accept=".zip,.upd,.UPD"></label>
+<p id="unsupported" class="error" hidden>This browser is too old. Use a current version of Firefox, Chrome, Edge or Safari.</p>
+<ol id="steps"></ol>
+<p id="error" class="error" hidden></p>
+</section>
+
+<section id="downloads" hidden>
+<h2>3. Download</h2>
+<p><a id="dl-patched" class="button" download>Patched update</a> <a id="dl-rollback" class="button secondary" download>Rollback update</a></p>
+<p class="small" id="hashes"></p>
+</section>
+
+<section>
+<h2>4. Install</h2>
+<ol>
+<li>Make a rollback stick first: format a USB stick as FAT32, and copy <code>C900MAIN.UPD</code> from the rollback zip to its root. Keep this stick.</li>
+<li>Format a second USB stick as FAT32. Do not use exFAT or a Ventoy stick: the CDJ-900 does not see their files.</li>
+<li>Copy only <code>C900MAIN.UPD</code> from the patched zip to the root of that stick.</li>
+<li>Turn off the player. Put the stick in the USB slot.</li>
+<li>Hold [RELOOP/EXIT] and [USB], and turn on the power. The player updates its firmware.</li>
+<li>When the update is complete, turn the player off and on.</li>
+</ol>
+<p>To go back to the stock firmware, install the rollback stick in the same way. The player then reports 4.32.</p>
+</section>
+
+<footer><p>Source, documentation and license: <a href="https://github.com/zdavison/cdj-flacwards">github.com/zdavison/cdj-flacwards</a> (MIT).</p></footer>
+</main>
+</body>
+</html>

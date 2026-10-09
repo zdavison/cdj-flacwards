@@ -1,0 +1,20 @@
+:root { --bg: #fafafa; --fg: #1d1d1f; --muted: #555; --accent: #0b6bcb; --warn-bg: #fff4e5; --warn-fg: #7a4100; --err: #b00020; --line: #ddd; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #161618; --fg: #ececec; --muted: #aaa; --accent: #5aa9ff; --warn-bg: #3a2a12; --warn-fg: #ffcf8a; --err: #ff6b7a; --line: #333; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, sans-serif; }
+main { max-width: 46rem; margin: 0 auto; padding: 1.5rem 16px 3rem; }
+h1 { margin-bottom: 0.25rem; }
+.lead { color: var(--muted); }
+.warning { background: var(--warn-bg); color: var(--warn-fg); padding: 0.75rem 1rem; border-radius: 8px; }
+#drop { display: block; border: 2px dashed var(--line); border-radius: 8px; padding: 1.5rem; text-align: center; cursor: pointer; }
+#drop.over { border-color: var(--accent); }
+#drop input { display: block; margin: 0.75rem auto 0; max-width: 100%; }
+#steps li::marker { content: "✓ "; color: var(--accent); }
+.error { color: var(--err); font-weight: 600; overflow-wrap: anywhere; }
+.button { display: inline-block; margin: 0.25rem 0; padding: 0.6rem 1rem; border-radius: 6px; background: var(--accent); color: #fff; text-decoration: none; }
+.button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+.small { font-size: 0.85rem; color: var(--muted); overflow-wrap: anywhere; }
+a { color: var(--accent); }
+footer { margin-top: 2rem; color: var(--muted); font-size: 0.9rem; }

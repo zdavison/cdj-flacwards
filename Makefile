@@ -107,12 +107,25 @@ build/webtest/.done: tests/fake_firmware.py tools/upd.py tools/build_patch.py
 
 test-web: build/webtest/.done
 	python3 tests/test_manifest.py build/webtest
-	node --test tests/web/
+	node --test tests/web/upd.test.mjs tests/web/zip.test.mjs tests/web/patcher.test.mjs tests/web/real.test.mjs
+
+# The site for GitHub Pages: the page, and the manifest from the release blob.
+site: build/flac-release.bin build/flac-release.sym
+	rm -rf build/site
+	mkdir -p build/site
+	cp web/*.html web/*.js web/*.css build/site/
+	python3 tools/build_patch.py manifest
+	cp out/web/cdj900-4.32.json build/site/
+
+# Local browser test (needs Playwright with Chromium).
+PLAYWRIGHT_MODULE ?= $(shell dirname "$$(command -v playwright 2>/dev/null)" 2>/dev/null)/../playwright
+test-browser: build/webtest/.done
+	PLAYWRIGHT_MODULE=$(PLAYWRIGHT_MODULE) node --test tests/web/browser.test.mjs
 
 clean:
 	rm -rf build/obj build/obj-rel build/blob.* build/host_fltest build/flac.* build/host_vwav build/test_vfs_hook build/abi_open build/test_rt
 
-.PHONY: all clean test test-host test-web check-abi
+.PHONY: all clean test test-host test-web check-abi site test-browser
 
 build/obj/%.o: src/%.S
 	@mkdir -p build/obj
