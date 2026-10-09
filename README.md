@@ -12,7 +12,7 @@ This project has no affiliation with AlphaTheta Corporation, Pioneer DJ or Pione
 
 ## Quickstart
 
-We can't legally provide pre-patched firmware, but you can patch it yourself using the web patcher:
+We can't legally provide pre-patched firmware, but you can patch it yourself using the web patcher: \
 https://zdavison.github.io/cdj-flacwards/
 
 ## Status
