@@ -1,0 +1,9 @@
+dr_flac.h from https://github.com/mackron/dr_libs commit dfe8377631000664666519fdb83da193fd8037f4 2026-08-31T22:26:15Z
+License: public domain or MIT-0 (see end of file).
+
+Local change (cdj-flacwards, 2026-10-09): drflac__seek_to_approximate_flac_frame_to_byte()
+tries up to 8 positions 4096 bytes further on when a frame that passed the header CRC
+does not decode, before it halves the range. Without it, a false frame header at the
+middle of the range makes the binary search give up and fall back to a brute force
+seek from the start of the stream. Test: tests/test_vwav.py test_seek_cost.
+Upstream pull request: https://github.com/mackron/dr_libs/pull/344

@@ -1,0 +1,239 @@
+diff --git i/emulator/qemu/cdj2000_main.c w/emulator/qemu/cdj2000_main.c
+index b9a79fc..263a15c 100644
+--- i/emulator/qemu/cdj2000_main.c
++++ w/emulator/qemu/cdj2000_main.c
+@@ -847,6 +847,169 @@ static int cdj_dmac_role(const CdjDmacChannel *channel)
+     return CDJ_DMA_PLAIN;
+ }
+ 
++/*
++ * CDJ_GUI_BUS=<chardev id>: the CDJ-900 GUI board on the panel's bus.
++ *
++ * The CDJ-900 has no separate GUI link.  Its M16C task runs GUI exchanges
++ * over the same SCIF/DMAC pair as the panel (0xffe20000, DMAC ch3/ch4) and
++ * picks the device with GPIO 0xfff10048: bit 4 set selects the panel, bit 4
++ * clear selects the GUI.  A GUI exchange sends MAIN's 64-byte status record
++ * (staged at 0xa4500800) and receives 66 bytes into 0xa4500000, of which the
++ * first 48 are the GUI's request (CRC in its last word, the same routine as
++ * the status record).  Bit 3 of the same register is the GUI's acknowledge
++ * line: GuiCom_SndTASK's start-up check counts the GUI as present only while
++ * it reads clear, and after an exchange a clear bit makes MAIN log a resend
++ * request from the GUI.  So it reads clear until a GUI exchange has
++ * completed, set after it, and clear again when the next one starts.
++ *
++ * With this variable set, exchanges with bit 4 clear go to the named chardev
++ * instead of the panel model.  Each frame on the wire is "CDJL" + u32 length
++ * (little-endian) + bytes, as on the CDJ-2000 link:
++ *   board -> peer  "CDJL": the record MAIN sent in one GUI exchange
++ *   peer -> board  "CDJL": a request for the next GUI exchange (queued)
++ *                  "CDJI": the idle request, sent whenever the queue is empty
++ * Without the variable nothing changes, which keeps the CDJ-2000 profiles as
++ * they were.
++ */
++#define GUI_BUS_SELECT_PANEL 0x0010
++#define GUI_BUS_READY        0x0008
++#define GUI_BUS_REQ_MAX      64
++#define GUI_BUS_QUEUE        64
++
++typedef struct {
++    bool enabled;
++    CharFrontend chr;
++    bool idle_set;
++    uint8_t idle[GUI_BUS_REQ_MAX];
++    unsigned idle_len;
++    uint8_t queue[GUI_BUS_QUEUE][GUI_BUS_REQ_MAX];
++    unsigned queue_len[GUI_BUS_QUEUE];
++    unsigned head, count;
++    uint8_t staging[8 + GUI_BUS_REQ_MAX];
++    unsigned staged;
++    const uint16_t *select_reg;     /* the GPIO halfword at 0xfff10048 */
++    bool ack;                       /* bit 3: the GUI took part in an exchange */
++    uint64_t exchanges;
++} CdjGuiBus;
++
++static CdjGuiBus cdj_gui_bus;
++
++static bool cdj_gui_bus_selected(void)
++{
++    return cdj_gui_bus.enabled && cdj_gui_bus.select_reg &&
++           !(*cdj_gui_bus.select_reg & GUI_BUS_SELECT_PANEL);
++}
++
++static int cdj_gui_bus_can_receive(void *opaque)
++{
++    return sizeof(cdj_gui_bus.staging) - cdj_gui_bus.staged;
++}
++
++static void cdj_gui_bus_frame(const uint8_t *magic, const uint8_t *data,
++                              unsigned len)
++{
++    CdjGuiBus *bus = &cdj_gui_bus;
++
++    if (!memcmp(magic, "CDJI", 4)) {
++        memcpy(bus->idle, data, len);
++        bus->idle_len = len;
++        bus->idle_set = true;
++    } else if (bus->count < GUI_BUS_QUEUE) {
++        unsigned slot = (bus->head + bus->count++) % GUI_BUS_QUEUE;
++        memcpy(bus->queue[slot], data, len);
++        bus->queue_len[slot] = len;
++    } else {
++        qemu_log_mask(LOG_GUEST_ERROR, "cdj-gui-bus: request queue full\n");
++    }
++}
++
++static void cdj_gui_bus_receive(void *opaque, const uint8_t *data, int size)
++{
++    CdjGuiBus *bus = &cdj_gui_bus;
++
++    while (size > 0) {
++        unsigned need = bus->staged < 8 ? 8 : 8 + ldl_le_p(bus->staging + 4);
++        unsigned take = MIN((unsigned)size, need - bus->staged);
++
++        memcpy(bus->staging + bus->staged, data, take);
++        bus->staged += take;
++        data += take;
++        size -= take;
++        if (bus->staged == 8) {
++            uint32_t len = ldl_le_p(bus->staging + 4);
++            if ((memcmp(bus->staging, "CDJL", 4) && memcmp(bus->staging, "CDJI", 4))
++                || len > GUI_BUS_REQ_MAX) {
++                qemu_log_mask(LOG_GUEST_ERROR, "cdj-gui-bus: bad frame header\n");
++                bus->staged = 0;
++                continue;
++            }
++        }
++        if (bus->staged >= 8 && bus->staged == 8 + ldl_le_p(bus->staging + 4)) {
++            cdj_gui_bus_frame(bus->staging, bus->staging + 8, bus->staged - 8);
++            bus->staged = 0;
++        }
++    }
++}
++
++/* MAIN's half of a GUI exchange: forward the record to the peer. */
++#define GUI_BUS_FRAME_MAX 4096
++
++static void cdj_gui_bus_tx(hwaddr src, unsigned len)
++{
++    static uint8_t frame[8 + GUI_BUS_FRAME_MAX];
++
++    cdj_gui_bus.ack = false;
++    len = MIN(len, (unsigned)GUI_BUS_FRAME_MAX);
++    memcpy(frame, "CDJL", 4);
++    stl_le_p(frame + 4, len);
++    address_space_read(&address_space_memory, src, MEMTXATTRS_UNSPECIFIED,
++                       frame + 8, len);
++    qemu_chr_fe_write_all(&cdj_gui_bus.chr, frame, 8 + len);
++}
++
++/* The GUI's half: the next queued request, else the idle one, else zeros. */
++static void cdj_gui_bus_rx(hwaddr dst, unsigned len)
++{
++    CdjGuiBus *bus = &cdj_gui_bus;
++    static uint8_t reply[GUI_BUS_FRAME_MAX];
++
++    bool supplied = bus->count || bus->idle_set;
++
++    memset(reply, 0, sizeof(reply));
++    len = MIN(len, (unsigned)sizeof(reply));
++    if (bus->count) {
++        memcpy(reply, bus->queue[bus->head], bus->queue_len[bus->head]);
++        bus->head = (bus->head + 1) % GUI_BUS_QUEUE;
++        bus->count--;
++    } else if (bus->idle_set) {
++        memcpy(reply, bus->idle, bus->idle_len);
++    }
++    address_space_write(&address_space_memory, dst, MEMTXATTRS_UNSPECIFIED,
++                        reply, len);
++    bus->ack = supplied;
++    bus->exchanges++;
++}
++
++static void cdj_gui_bus_init(const uint16_t *select_reg)
++{
++    const char *id = getenv("CDJ_GUI_BUS");
++    Chardev *chr;
++
++    if (!id || !*id) {
++        return;
++    }
++    chr = qemu_chr_find(id);
++    if (!chr) {
++        error_report("CDJ_GUI_BUS: no chardev with id '%s'", id);
++        exit(1);
++    }
++    qemu_chr_fe_init(&cdj_gui_bus.chr, chr, &error_abort);
++    qemu_chr_fe_set_handlers(&cdj_gui_bus.chr, cdj_gui_bus_can_receive,
++                             cdj_gui_bus_receive, NULL, NULL, NULL, NULL, true);
++    cdj_gui_bus.select_reg = select_reg;
++    cdj_gui_bus.enabled = true;
++}
++
+ /*
+  * The panel exchange finishes later, not in the store that starts it.  0x246e36
+  * arms the transmit half first and the receive half four instructions later, so
+@@ -1147,8 +1310,12 @@ static void cdj_dmac_panel_done(void *opaque)
+             continue;
+         }
+         channel->armed = false;
+-        cdj_panel_tx_trace(channel);
+-        cdj_panel_lamps(channel);
++        if (cdj_gui_bus_selected()) {
++            cdj_gui_bus_tx(cdj_dma_phys(channel->sar), channel->tcr);
++        } else {
++            cdj_panel_tx_trace(channel);
++            cdj_panel_lamps(channel);
++        }
+         /* The device side is a fixed register; only the memory side advances. */
+         cdj_dmac_complete(channel, channel->sar + channel->tcr, channel->dar);
+         /* The request is TE && IE: a channel run without IE completes quietly. */
+@@ -1176,6 +1343,19 @@ static void cdj_dmac_panel_done(void *opaque)
+             continue;
+         }
+         channel->armed = false;
++        if (cdj_gui_bus_selected()) {
++            cdj_gui_bus_rx(cdj_dma_phys(channel->dar), channel->tcr);
++            cdj_dmac_complete(channel, channel->sar, channel->dar + channel->tcr);
++            if (channel->chcr & CHCR_IE) {
++                dmac->panel_rx_pending = true;
++                dmac->panel_rx_index = index;
++                dmac->panel_rx_line = dmac->channel_irq[index];
++                if (dmac->panel_rx_line) {
++                    qemu_set_irq(dmac->panel_rx_line, 1);
++                }
++            }
++            continue;
++        }
+         cdj_panel_frame(dmac->panel_reply);
+         address_space_write(&address_space_memory, cdj_dma_phys(channel->dar),
+                             MEMTXATTRS_UNSPECIFIED, dmac->panel_reply,
+@@ -1962,6 +2142,10 @@ static uint64_t cdj_link_flag_read(void *opaque, hwaddr offset, unsigned size)
+         }
+         return value;
+     }
++    if (offset == LINK_FLAG_REG - SOC_BLOCK_BASE && cdj_gui_bus.enabled &&
++        cdj_gui_bus.ack && size <= 2) {
++        return flag->reg[offset >> 1] | GUI_BUS_READY;
++    }
+     if (offset == DSP_EVENT_REG - SOC_BLOCK_BASE && flag->dsp_event) {
+         return flag->reg[offset >> 1] | DSP_EVENT_BIT;
+     }
+@@ -1983,6 +2167,10 @@ static void cdj_link_flag_write(void *opaque, hwaddr offset, uint64_t value,
+     if (cdj_nxs_profile && offset == DSP_RESET_REG - SOC_BLOCK_BASE) {
+         old_dsp_reset = (flag->reg[offset >> 1] & DSP_RESET_BIT) != 0;
+     }
++    if (offset == LINK_FLAG_REG - SOC_BLOCK_BASE && cdj_gui_bus.enabled) {
++        /* Bit 3 is an input from the GUI; only cdj_gui_bus drives it. */
++        value &= ~(uint64_t)GUI_BUS_READY;
++    }
+     flag->reg[offset >> 1] = value;
+     if (size > 2) {
+         flag->reg[(offset >> 1) + 1] = value >> 16;
+@@ -4823,6 +5011,7 @@ static void cdj_link_board_init(MemoryRegion *system, struct intc_desc *intc)
+ 
+     flag->panel_present = !getenv("CDJ_NO_PANEL");
+     flag->usb_power = !getenv("CDJ_NO_USB_POWER");
++    cdj_gui_bus_init(&flag->reg[(LINK_FLAG_REG - SOC_BLOCK_BASE) >> 1]);
+     memory_region_init_io(&flag->iomem, NULL, &cdj_link_flag_ops, flag,
+                           "cdj2000.soc-block", SOC_BLOCK_SIZE);
+     memory_region_add_subregion(system, SOC_BLOCK_BASE, &flag->iomem);

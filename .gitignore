@@ -1,0 +1,13 @@
+ghidra-proj/
+firmware/
+*.zip
+build/
+toolchain/
+out/
+emu/
+runs/
+.superpowers/
+console.raw
+build-toolchain*.log
+tmp/
+__pycache__/
