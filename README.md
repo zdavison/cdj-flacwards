@@ -10,6 +10,10 @@ This project adds a patch to the CDJ-900 MAIN firmware 4.32. The patch decodes F
 
 This project has no affiliation with AlphaTheta Corporation, Pioneer DJ or Pioneer Corporation. These companies do not endorse or support this project. They did not approve this modification. "Pioneer DJ", "Pioneer", "CDJ" and "rekordbox" are trademarks of their owners. This document uses these names only to identify the hardware and the file formats.
 
+> [!WARNING]
+> LINK mode is as of yet unsupported. Your FLACs will load on one player but not on a LINKed player.
+> This feature will come very soon once I fix my 2nd CDJ-900's ethernet port.
+
 ## Quickstart
 
 We can't legally provide pre-patched firmware, but you can patch it yourself using the web patcher: \
