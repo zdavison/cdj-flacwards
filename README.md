@@ -14,7 +14,7 @@ This project is not affiliated with, endorsed by or supported by AlphaTheta Corp
 - Supported FLAC files: 44.1 kHz and 48 kHz, 16-bit and 24-bit, stereo. The player rejects other FLAC files with its normal load error.
 - Tracks load from a rekordbox USB export. Folder browsing without a rekordbox database is not supported yet.
 - PRO DJ LINK (sharing tracks with other players) is not tested. Do not expect FLAC tracks to load over LINK.
-- Other players (CDJ-2000, CDJ-2000NXS, CDJ-900NXS) are not supported yet. See `docs/release-tasks.md`.
+- Other players (CDJ-2000, CDJ-2000NXS, CDJ-900NXS) are not supported yet.
 
 ## How it works
 
@@ -22,13 +22,11 @@ The patch shows each FLAC file to the firmware as a WAV file: a 44-byte RIFF hea
 
 The FLAC decoder is [dr_flac](https://github.com/mackron/dr_libs). All new code goes into unused space in the firmware image. No stock instruction changes.
 
-- `docs/superpowers/specs/2026-10-08-flac-virtual-wav-design.md`: the design.
-- `NOTES.md`: the firmware analysis, with addresses and measurements.
-- `STATUS.md`: the project status and how to continue the work.
+`NOTES.md` has the firmware analysis, with addresses and measurements.
 
 ## This repository holds no firmware
 
-This repository contains no AlphaTheta or Pioneer code. It holds only our own code, tools and documentation: no firmware, no patched firmware and no decompiler output. The project does not distribute patched firmware, also not as a release download. To build an update file, download the official CDJ-900 firmware 4.32 package (`CDJ-900v432.zip`) from the [AlphaTheta support site](https://support.alphatheta.com/en-US/articles/21708238994585). The tools check its SHA-256 and patch your own copy on your computer. See `docs/legal-review.md`.
+This repository contains no AlphaTheta or Pioneer code. It holds only our own code, tools and documentation: no firmware, no patched firmware and no decompiler output. The project does not distribute patched firmware, also not as a release download. To build an update file, download the official CDJ-900 firmware 4.32 package (`CDJ-900v432.zip`) from the [AlphaTheta support site](https://support.alphatheta.com/en-US/articles/21708238994585). The tools check its SHA-256 and patch your own copy on your computer.
 
 ## Patch in the browser
 
