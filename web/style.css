@@ -1,20 +1,36 @@
-:root { --bg: #fafafa; --fg: #1d1d1f; --muted: #555; --accent: #0b6bcb; --warn-bg: #fff4e5; --warn-fg: #7a4100; --err: #b00020; --line: #ddd; }
-@media (prefers-color-scheme: dark) {
-  :root { --bg: #161618; --fg: #ececec; --muted: #aaa; --accent: #5aa9ff; --warn-bg: #3a2a12; --warn-fg: #ffcf8a; --err: #ff6b7a; --line: #333; }
+/* Dark, flat panels with 1px lines, in the style of the rekordbox desktop app. */
+:root {
+  color-scheme: dark;
+  --bg: #0b0b0b; --panel: #151515; --head: #1c1c1c;
+  --fg: #d6d6d6; --muted: #8a8a8a; --line: #2e2e2e; --line-hi: #444;
+  --accent: #2aa3e0; --accent-dim: #12384d;
+  --warn-fg: #e8a33d; --warn-line: #5c3f12; --err: #ff5a5a;
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, sans-serif; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.55 "Helvetica Neue", Arial, system-ui, sans-serif; }
 main { max-width: 46rem; margin: 0 auto; padding: 1.5rem 16px 3rem; }
-h1 { margin-bottom: 0.25rem; }
-.lead { color: var(--muted); }
-.warning { background: var(--warn-bg); color: var(--warn-fg); padding: 0.75rem 1rem; border-radius: 8px; }
-#drop { display: block; border: 2px dashed var(--line); border-radius: 8px; padding: 1.5rem; text-align: center; cursor: pointer; }
-#drop.over { border-color: var(--accent); }
-#drop input { display: block; margin: 0.75rem auto 0; max-width: 100%; }
+h1 { margin: 0 0 0.25rem; font-size: 1.25rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: #fff; }
+.lead { margin-top: 0; padding-bottom: 1rem; border-bottom: 1px solid var(--line); color: var(--muted); }
+section { margin: 1rem 0; background: var(--panel); border: 1px solid var(--line); border-radius: 2px; padding: 0 1rem 0.25rem; }
+section h2 { margin: 0 -1rem 0.75rem; padding: 0.4rem 1rem; background: var(--head); border-bottom: 1px solid var(--line); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+section.warning { padding-top: 0.25rem; color: var(--warn-fg); border-color: var(--warn-line); border-left: 2px solid var(--warn-fg); }
+code { font: 0.9em ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: #fff; background: #0e0e0e; border: 1px solid var(--line); border-radius: 2px; padding: 0 0.3em; }
+#drop { display: block; border: 1px dashed var(--line-hi); border-radius: 2px; padding: 1.5rem; text-align: center; cursor: pointer; background: #101010; color: var(--muted); }
+#drop:hover { border-color: var(--muted); }
+#drop.over { border: 1px solid var(--accent); background: var(--accent-dim); color: var(--fg); }
+#drop input { display: block; margin: 0.75rem auto 0; max-width: 100%; color: var(--muted); }
+#steps { padding-left: 1.25rem; }
+#steps li { border-bottom: 1px solid var(--line); padding: 0.2rem 0; }
 #steps li::marker { content: "✓ "; color: var(--accent); }
+ol li { padding: 0.15rem 0; }
 .error { color: var(--err); font-weight: 600; overflow-wrap: anywhere; }
-.button { display: inline-block; margin: 0.25rem 0; padding: 0.6rem 1rem; border-radius: 6px; background: var(--accent); color: #fff; text-decoration: none; }
-.button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
-.small { font-size: 0.85rem; color: var(--muted); overflow-wrap: anywhere; }
+.button { display: inline-block; margin: 0.25rem 0; padding: 0.45rem 0.9rem; border: 1px solid var(--accent); border-radius: 2px; background: var(--accent-dim); color: #fff; text-decoration: none; font-size: 0.8rem; letter-spacing: 0.06em; text-transform: uppercase; }
+.button:hover { background: var(--accent); }
+.button.secondary { background: transparent; color: var(--fg); border-color: var(--line-hi); }
+.button.secondary:hover { border-color: var(--muted); background: var(--head); }
+.small { font: 0.75rem/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--muted); overflow-wrap: anywhere; }
 a { color: var(--accent); }
-footer { margin-top: 2rem; color: var(--muted); font-size: 0.9rem; }
+footer { margin-top: 2rem; padding-top: 0.75rem; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.8rem; }
+footer p { margin: 0; }
+#drop input::file-selector-button { margin-right: 0.6rem; padding: 0.3rem 0.8rem; border: 1px solid var(--line-hi); border-radius: 2px; background: var(--head); color: var(--fg); font: inherit; cursor: pointer; }
+#drop input::file-selector-button:hover { border-color: var(--muted); }
