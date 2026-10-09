@@ -10,7 +10,7 @@
 <body>
 <main>
 <h1>cdj-flacwards</h1>
-<p class="lead">FLAC playback for the Pioneer DJ CDJ-900 (firmware 4.32). This page makes the update file from your own copy of the official firmware. The file stays on your computer: nothing is uploaded.</p>
+<p class="lead">FLAC playback for the Pioneer DJ CDJ-900 (firmware 4.32). This page makes the update file from your own copy of the official firmware.</p>
 
 <section class="warning">
 <p><strong>Warning:</strong> This patch changes the firmware of your player. A firmware update can make a player unusable, and a modified firmware can void its warranty. You use it at your own risk. There is no warranty.</p>
@@ -40,11 +40,11 @@
 <section>
 <h2>4. Install</h2>
 <ol>
-<li>Make a rollback stick first: format a USB stick as FAT32, and copy <code>C900MAIN.UPD</code> from the rollback zip to its root. Keep this stick.</li>
-<li>Format a second USB stick as FAT32. Do not use exFAT or a Ventoy stick: the CDJ-900 does not see their files.</li>
+<li>Save the rollback firmware, in-case you need to revert the patched `flacwards` firmware.</li>
+<li>Format a USB stick as FAT32. You can use an existing FAT32 stick without formatting it.</li>
 <li>Copy only <code>C900MAIN.UPD</code> from the patched zip to the root of that stick.</li>
-<li>Turn off the player. Put the stick in the USB slot.</li>
-<li>Hold [RELOOP/EXIT] and [USB], and turn on the power. The player updates its firmware.</li>
+<li>Turn off the player. </li>
+<li>Hold [RELOOP/EXIT] and [USB], and turn on the power. Put the stick in the player when prompted. The player updates its firmware.</li>
 <li>When the update is complete, turn the player off and on.</li>
 </ol>
 <p>To go back to the stock firmware, install the rollback stick in the same way. The player then reports 4.32.</p>
