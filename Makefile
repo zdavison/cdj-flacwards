@@ -63,17 +63,21 @@ build/flac-release.sym: build/flac-release.elf
 	$(NM) -n $< > $@
 
 build/host_fltest: tests/host_fltest.c src/fltest_core.c src/pool.c src/flac_impl.c
+	@mkdir -p build
 	cc -O2 -Wall -o $@ $^ -lm
 
 VWAV_SRCS = src/vwav.c src/vwcheck.c src/crc32.c src/pool.c src/flac_impl.c
 
 build/host_vwav: tests/host_vwav.c $(VWAV_SRCS) src/*.h third_party/dr_flac.h
+	@mkdir -p build
 	cc -O2 -Wall -o $@ tests/host_vwav.c $(VWAV_SRCS) -lm
 
 build/test_vfs_hook: tests/test_vfs_hook.c src/vfs_hook.c src/vh_stats.c src/putfmt.c $(VWAV_SRCS) src/*.h third_party/dr_flac.h
+	@mkdir -p build
 	cc -O2 -Wall -DFLAC_STATS -o $@ tests/test_vfs_hook.c src/vfs_hook.c src/vh_stats.c src/putfmt.c $(VWAV_SRCS) -lm
 
 build/test_rt: tests/test_rt.c src/rt.c
+	@mkdir -p build
 	cc -O2 -Wall -fno-builtin -o $@ tests/test_rt.c
 
 test: build/host_vwav build/test_vfs_hook build/abi_open build/test_rt
@@ -87,6 +91,7 @@ ABI_SRCS = tests/abi/open_main.c src/vfs_hook.c src/vh_stats.c src/putfmt.c src/
            src/pool.c src/flac_impl.c src/rt.c
 
 build/abi_open: $(ABI_SRCS) tests/abi/open_call.S tests/abi/link.ld src/stack.S src/*.h
+	@mkdir -p build
 	$(CC) $(CFLAGS) -DFLAC_STATS -T tests/abi/link.ld -Wl,-z,max-page-size=0x1000 -o $@ $(ABI_SRCS) \
 	    tests/abi/open_call.S src/stack.S -lgcc
 
