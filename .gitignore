@@ -11,3 +11,4 @@ console.raw
 build-toolchain*.log
 tmp/
 __pycache__/
+.claude/worktrees/
