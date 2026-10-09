@@ -61,6 +61,13 @@ def test_damaged() -> None:
     check("corrupt_mid tail", got[-(pcm * 45 // 100):] == ref[-(pcm * 45 // 100):])
     differ = sum(1 for i in range(44, len(ref), 4) if got[i:i + 4] != ref[i:i + 4]) * 4
     check(f"corrupt_mid gap ({differ} bytes differ)", 0 < differ <= 176400)
+    # Damage inside frames: dr_flac skips each bad frame (CRC). The audio after
+    # it must stay at its true position, with silence only for the bad frames.
+    r, got = dump("crc_skip")
+    check("crc_skip length", len(got) == len(ref), r.stdout + r.stderr)
+    check("crc_skip tail", got[-(pcm // 4):] == ref[-(pcm // 4):])
+    differ = sum(1 for i in range(44, len(ref), 4) if got[i:i + 4] != ref[i:i + 4]) * 4
+    check(f"crc_skip gap ({differ} bytes differ)", 0 < differ <= 3 * 4608 * 4)
 
 
 def test_jumps() -> None:
@@ -121,13 +128,46 @@ def test_seek_cost() -> None:
           r.returncode == 0 and worst[0] < 512 * 1024, r.stderr)
 
 
+def test_damage_scan() -> None:
+    """Damage t16_44 at 25 positions, two ways: 4096 zero bytes (frame headers
+    lost) and 16 changed bytes (frame CRC fails). Each dump must finish, keep
+    its length, end with the reference audio, and differ in at most 1 s. A
+    damaged frame once made dr_flac's binary search loop for ever."""
+    base = (DATA / "t16_44.flac").read_bytes()
+    ref = (DATA / "t16_44.ref.wav").read_bytes()
+    n = len(ref)
+    bad = []
+    for kind in ("zero", "xor"):
+        for i in range(25):
+            m = len(base) // 5 + i * (len(base) * 3 // 5) // 25 + 1237 * i
+            d = bytearray(base)
+            if kind == "zero":
+                d[m:m + 4096] = bytes(4096)
+            else:
+                for j in range(m, m + 16):
+                    d[j] ^= 0x5A
+            src = DATA / "damage_scan.flac"
+            out = DATA / "damage_scan.out.wav"
+            src.write_bytes(d)
+            try:
+                subprocess.run([str(HOST), "dump", str(src), str(out)], capture_output=True, timeout=30)
+            except subprocess.TimeoutExpired:
+                bad.append(f"{kind}@{m}: timeout")
+                continue
+            got = out.read_bytes()
+            differ = sum(1 for k in range(44, n, 4) if got[k:k + 4] != ref[k:k + 4]) * 4 if len(got) == n else n
+            if len(got) != n or got[-(n // 10):] != ref[-(n // 10):] or differ > 176400:
+                bad.append(f"{kind}@{m}: {differ} bytes differ")
+    check(f"damage scan ({len(bad)} bad of 50)", not bad, "; ".join(bad[:5]))
+
+
 def test_rt() -> None:
     r = subprocess.run([str(ROOT / "build/test_rt")], capture_output=True, text=True, timeout=60)
     check("rt memcpy/memset", r.returncode == 0, r.stdout)
 
 
 TESTS = [test_valid, test_reject, test_damaged, test_jumps, test_vfs_hook, test_open_abi,
-         test_reverse, test_seek_cost, test_rt]
+         test_reverse, test_seek_cost, test_damage_scan, test_rt]
 
 if __name__ == "__main__":
     td.make_all()

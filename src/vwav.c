@@ -166,6 +166,66 @@ static uint32_t seek_or_skip(vwav *v, uint32_t frame)
     return VWAV_LOST;
 }
 
+/* The first PCM frame of the FLAC frame that dr_flac decoded last, from its
+   header (the same rule as dr_flac's own range function). */
+static uint32_t flac_frame_first(const drflac *f)
+{
+    uint64_t first = f->currentFLACFrame.header.pcmFrameNumber;
+    if (first == 0)
+        first = (uint64_t)f->currentFLACFrame.header.flacFrameNumber * f->maxBlockSizeInPCMFrames;
+    return (uint32_t)first;
+}
+
+/* Decode want frames from frame into v->s32; the decoder is at frame.
+   dr_flac skips a frame whose CRC does not match and continues with the next
+   frame without an error. So read at most to the end of the current FLAC
+   frame, and at the start of each new FLAC frame compare its position (from
+   its header) with the expected position. Frames that dr_flac skipped become
+   silence, and the audio after them stays at its true position. Return the
+   number of frames filled (the rest is for the caller to make silent), or
+   VWAV_LOST on a read error. */
+static uint32_t decode(vwav *v, uint32_t frame, uint32_t want)
+{
+    drflac *f = v->flac;
+    uint32_t got = 0;
+
+    while (got < want) {
+        uint32_t remaining = f->currentFLACFrame.pcmFramesRemaining;
+        uint32_t k = remaining ? min32(want - got, remaining) : 1;
+        drflac_int32 *dst = v->s32 + got * VWAV_CHANNELS;
+        uint32_t n = (uint32_t)drflac_read_pcm_frames_s32(f, k, dst);
+        if (v->io_error) {
+            v->next_frame = VWAV_LOST;
+            return VWAV_LOST;
+        }
+        if (n == 0)
+            break;
+        if (remaining == 0) {
+            /* A new FLAC frame: dst holds its first sample. */
+            uint32_t at = flac_frame_first(f);
+            uint32_t expected = frame + got;
+            if (at > expected) {
+                uint32_t skip = at - expected;
+                if (skip >= want - got) {
+                    /* The audio continues after this chunk: the next fill
+                       seeks to it, and the frames before it are silence. */
+                    v->gap_from = expected;
+                    v->gap_to = at;
+                    v->next_frame = VWAV_LOST;
+                    return got;
+                }
+                dst[skip * VWAV_CHANNELS] = dst[0];
+                dst[skip * VWAV_CHANNELS + 1] = dst[1];
+                memset(dst, 0, skip * VWAV_CHANNELS * sizeof dst[0]);
+                got += skip;
+            }
+        }
+        got += n;
+    }
+    v->next_frame = got == want ? frame + got : VWAV_LOST;
+    return got;
+}
+
 /* Decode the chunk that starts at frame. Frames that do not decode become
    silence, and decoding goes on after the damage. Return 0, or -1 if the real
    file gave a read error. */
@@ -199,12 +259,9 @@ static int fill(vwav *v, uint32_t frame)
                 goto silence;
             }
         }
-        got = (uint32_t)drflac_read_pcm_frames_s32(v->flac, want, v->s32);
-        if (v->io_error) {
-            v->next_frame = VWAV_LOST;
+        got = decode(v, frame, want);
+        if (got == VWAV_LOST)
             return -1;
-        }
-        v->next_frame = got == want ? frame + got : VWAV_LOST;
     }
 silence:
     memset(v->s32 + got * VWAV_CHANNELS, 0, (want - got) * VWAV_CHANNELS * sizeof v->s32[0]);

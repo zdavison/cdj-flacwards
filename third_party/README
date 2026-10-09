@@ -7,3 +7,8 @@ does not decode, before it halves the range. Without it, a false frame header at
 middle of the range makes the binary search give up and fall back to a brute force
 seek from the start of the stream. Test: tests/test_vwav.py test_seek_cost.
 Upstream pull request: https://github.com/mackron/dr_libs/pull/344
+
+Second local change (2026-10-09): drflac__seek_to_pcm_frame__binary_search_internal()
+stops after 64 steps. With the first change, a target inside a frame that does not
+decode made the search alternate between the frames before and after it for ever.
+Test: tests/test_vwav.py test_damage_scan (it timed out before this change).

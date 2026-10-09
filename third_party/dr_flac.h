@@ -5980,6 +5980,7 @@ static drflac_bool32 drflac__seek_to_pcm_frame__binary_search_internal(drflac* p
     drflac_uint64 lastSuccessfulSeekOffset = (drflac_uint64)-1;
     drflac_uint64 closestSeekOffsetBeforeTargetPCMFrame = byteRangeLo;
     drflac_uint32 seekForwardThreshold = (pFlac->maxBlockSizeInPCMFrames != 0) ? pFlac->maxBlockSizeInPCMFrames*2 : 4096;
+    drflac_uint32 iterations = 0;     /* cdj-flacwards change, see below */
 
     targetByte = byteRangeLo + (drflac_uint64)(((drflac_int64)((pcmFrameIndex - pFlac->currentPCMFrame) * pFlac->channels * pFlac->bitsPerSample)/8.0f) * DRFLAC_BINARY_SEARCH_APPROX_COMPRESSION_RATIO);
     if (targetByte > byteRangeHi) {
@@ -5987,6 +5988,13 @@ static drflac_bool32 drflac__seek_to_pcm_frame__binary_search_internal(drflac* p
     }
 
     for (;;) {
+        /*
+        cdj-flacwards change: when the target is inside a frame that does not decode, the search can alternate between the frames
+        before and after it for ever. A binary search over a byte range needs far fewer steps than this, so give up instead.
+        */
+        if (++iterations > 64) {
+            break;
+        }
         /*
         If only two adjacent byte offsets remain, binary search cannot narrow the range any further. Seek to the closest frame before the target and decode
         forward from there.

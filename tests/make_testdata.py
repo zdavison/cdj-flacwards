@@ -91,10 +91,24 @@ def long_noseek() -> None:
     src.unlink()
 
 
+def crc_frames() -> None:
+    """t16_44 with 16 bytes changed inside 3 frames (at 30, 50 and 70 % of the
+    file). The frame headers stay intact, so the frame CRCs fail. dr_flac then
+    skips each damaged frame without an error (crc_skip.flac)."""
+    data = bytearray((OUT / "t16_44.flac").read_bytes())
+    for frac in (0.3, 0.5, 0.7):
+        m = int(len(data) * frac)
+        for i in range(m, m + 16):
+            data[i] ^= 0x5A
+    (OUT / "crc_skip.flac").write_bytes(data)
+
+
 def make_all() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     if not (OUT / "long_noseek.flac").exists():
         long_noseek()
+    if (OUT / "t16_44.flac").exists() and not (OUT / "crc_skip.flac").exists():
+        crc_frames()
     if (OUT / "done").exists():
         return
     pic = picture()
@@ -124,6 +138,7 @@ def make_all() -> None:
     m = len(base) // 2
     mid[m:m + 4096] = bytes(4096)
     (OUT / "corrupt_mid.flac").write_bytes(mid)
+    crc_frames()
     (OUT / "done").write_bytes(b"")
 
 

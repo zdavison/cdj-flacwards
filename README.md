@@ -68,7 +68,7 @@ You need Linux, Python 3, `sh-elf-binutils`, and the GCC build dependencies (GMP
 2. Copy only `out/release/C900MAIN.UPD` to the root of the stick.
 3. Turn off the player. Put the stick in the USB slot.
 4. Hold [RELOOP/EXIT] and [USB], and turn on the power. The player updates its MAIN firmware.
-5. When the update is complete, turn the player off and on. Check the version: the patched build reports a version above 4.32 (for example 4.43).
+5. When the update is complete, turn the player off and on. Check the version: the patched build reports a version above 4.32 (for example 4.44).
 
 ## Safety
 

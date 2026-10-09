@@ -255,7 +255,7 @@ if __name__ == "__main__":
      "deck6": lambda: flac(name="deck6", version="4.41", stats=True),
      # deck7: deck6 plus the FLAC read-ahead cap (hook_fill_policy, VH_AHEAD_CAP).
      "deck7": lambda: flac(name="deck7", version="4.42", stats=True),
-     # release: the hooks only (no console commands, no statistics). 4.43 adds
+     # release: the hooks only (no console commands, no statistics). 4.43 added
      # the damaged-frame resume, no brute force seek, and faster memcpy/convert.
-     "release": lambda: flac(name="release", version="4.43", release=True),
+     "release": lambda: flac(name="release", version="4.44", release=True),
      "rollback": rollback}[sys.argv[1]]()
