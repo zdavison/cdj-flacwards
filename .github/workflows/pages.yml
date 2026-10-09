@@ -4,9 +4,12 @@
 # paid plan); until then the job builds the site only.
 name: Pages
 
+# Deploy only a release: a version tag, or a manual run. A push to main does
+# not change the page. tools/build_patch.py refuses a release blob other than
+# RELEASE_BLOB_SHA256, so the page always holds the blob of RELEASE_VERSION.
 on:
   push:
-    branches: [main]
+    tags: ["v*"]
   workflow_dispatch:
 
 permissions:
@@ -23,6 +26,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
       - name: Install build tools
         run: |
           sudo apt-get update
@@ -38,6 +44,8 @@ jobs:
         run: tools/build-toolchain.sh
       - name: Add the toolchain to PATH
         run: echo "$PWD/toolchain/bin" >> "$GITHUB_PATH"
+      - name: Run the patcher tests
+        run: make test-web
       - name: Build the site
         run: make site
       - uses: actions/upload-pages-artifact@v3

@@ -62,6 +62,7 @@ check("wrong stock word refused",
       raises(lambda: bp.apply_manifest(data, json.loads((D / "bad-word-manifest.json").read_text()))))
 check("padding not free refused",
       raises(lambda: bp.apply_manifest(data, json.loads((D / "bad-padding-manifest.json").read_text()))))
+check("an untested release blob is refused", raises(lambda: bp.check_release_blob(b"not the tested blob")))
 check("manifest hash is the fake file's hash", m["upd_sha256"] == hashlib.sha256(data).hexdigest())
 
 print(f"{failures} failures")

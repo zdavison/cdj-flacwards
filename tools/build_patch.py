@@ -33,6 +33,9 @@ STOCK_SHA256 = "75f428732586d28289f9f83afbee7d79ef619568e7e2f81f54d666f628898258
 RELEASE_VERSION = "4.44"
 ROLLBACK_VERSION = "4.99"
 RELEASE_DATE = b"20261008\0"
+# The SHA-256 of build/flac-release.bin for RELEASE_VERSION: the blob for the
+# test on the player. Change it only together with RELEASE_VERSION.
+RELEASE_BLOB_SHA256 = "9f8167b3f6155a7cb2685f46db14dc91c5f1dd53656bc5edd31744df37657554"
 
 VERSION_ADDR = 0x04000740
 DATE_ADDR = 0x04000760
@@ -338,8 +341,18 @@ def write_upd(name: str, file: bytes) -> Path:
     return out
 
 
+def check_release_blob(blob: bytes) -> None:
+    """Refuse a release blob other than the tested one (RELEASE_BLOB_SHA256)."""
+    found = hashlib.sha256(blob).hexdigest()
+    if found != RELEASE_BLOB_SHA256:
+        raise ValueError(f"build/flac-release.bin is not the tested {RELEASE_VERSION} blob "
+                         f"(sha256 {found}, expected {RELEASE_BLOB_SHA256}). Change "
+                         "RELEASE_BLOB_SHA256 only together with RELEASE_VERSION.")
+
+
 def release_manifest() -> dict:
     blob = (ROOT / "build/flac-release.bin").read_bytes()
+    check_release_blob(blob)
     syms = symbols(ROOT / "build/flac-release.sym")
     return manifest_data(blob, syms)
 
