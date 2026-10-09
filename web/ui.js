@@ -13,7 +13,13 @@ const STEPS = {
 const $ = (id) => document.getElementById(id);
 
 function supported() {
-  return "DecompressionStream" in window && window.crypto?.subtle && "Worker" in window;
+  if (!(window.crypto?.subtle && "Worker" in window)) return false;
+  try {
+    new DecompressionStream("deflate-raw");
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function showStep(step) {
@@ -31,12 +37,14 @@ function errorText(e) {
   if (e.kind === "wrong-version")
     return `${e.message} Expected SHA-256 ${e.expected}, found ${e.found}.`;
   if (e.kind === "not-package") return `${e.message} Download CDJ-900v432.zip from the AlphaTheta support site.`;
-  return `${e.message} No file was made. Please report this on GitHub.`;
+  if (e.kind === "bad-zip") return `${e.message} Download CDJ-900v432.zip again.`;
+  return `${e.message}. No file was made. Please report this on GitHub.`;
 }
 
 function offer(id, name, inner, data, label) {
   const zip = writeStoredZip([{ name: inner, data }]);
   const a = $(id);
+  if (a.href) URL.revokeObjectURL(a.href);
   a.href = URL.createObjectURL(new Blob([zip], { type: "application/zip" }));
   a.download = name;
   a.textContent = label;
@@ -48,13 +56,33 @@ async function main() {
     $("file").disabled = true;
     return;
   }
-  const manifest = await (await fetch("cdj900-4.32.json")).json();
+  let manifest;
+  try {
+    const r = await fetch("cdj900-4.32.json");
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    manifest = await r.json();
+  } catch (e) {
+    showError(`The page could not load its patch data (${e.message}). Reload the page.`);
+    $("file").disabled = true;
+    return;
+  }
+  // Only the newest run may change the page. A new file stops the old run.
+  let current = null;
   const run = async (file) => {
+    if (current) current.terminate();
+    const worker = new Worker("worker.js", { type: "module" });
+    current = worker;
     $("steps").replaceChildren();
     $("error").hidden = true;
     $("downloads").hidden = true;
-    const worker = new Worker("worker.js", { type: "module" });
+    worker.onerror = (e) => {
+      if (worker !== current) return;
+      e.preventDefault();
+      showError("The patcher could not start in this browser. Use a current version of Firefox, Chrome, Edge or Safari.");
+      worker.terminate();
+    };
     worker.onmessage = async ({ data }) => {
+      if (worker !== current) return;
       if (data.type === "progress") showStep(data.step);
       else if (data.type === "error") { showError(errorText(data)); worker.terminate(); }
       else if (data.type === "done") {
@@ -62,7 +90,9 @@ async function main() {
         const pv = manifest.patched_version, rv = manifest.rollback_version;
         offer("dl-patched", `cdj-flacwards-${pv}.zip`, "patched/C900MAIN.UPD", patched, `Download patched C900MAIN.UPD (${pv})`);
         offer("dl-rollback", `cdj900-rollback-${rv}.zip`, "rollback/C900MAIN.UPD", rollback, `Download rollback C900MAIN.UPD (${rv})`);
-        $("hashes").textContent = `SHA-256 patched: ${await sha256Hex(patched)}. SHA-256 rollback: ${await sha256Hex(rollback)}.`;
+        const hashes = `SHA-256 patched: ${await sha256Hex(patched)}. SHA-256 rollback: ${await sha256Hex(rollback)}.`;
+        if (worker !== current) return;
+        $("hashes").textContent = hashes;
         $("downloads").hidden = false;
         worker.terminate();
       }

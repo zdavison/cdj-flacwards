@@ -32,13 +32,26 @@ test("a zip without the update file is not the package", async () => {
 });
 
 test("already-patched", async () => {
-  await assert.rejects(applyManifest(bytes("fake-patched.upd"), m),
+  const steps = [];
+  await assert.rejects(applyManifest(bytes("fake-patched.upd"), m, (s) => steps.push(s)),
     (e) => e instanceof PatchError && e.kind === "wrong-version" && e.expected === m.upd_sha256);
+  assert.deepEqual(steps, []); // a step is reported only after its check passed
 });
 
 test("a wrong stock word is an internal error", async () => {
-  await assert.rejects(applyManifest(bytes("fake.upd"), json("bad-word-manifest.json")),
+  const steps = [];
+  await assert.rejects(applyManifest(bytes("fake.upd"), json("bad-word-manifest.json"), (s) => steps.push(s)),
     (e) => e instanceof PatchError && e.kind === "internal");
+  assert.deepEqual(steps, ["hash", "rollback", "unpack"]);
+});
+
+test("a damaged zip is a bad-zip error", async () => {
+  const z = bytes("fake.zip");
+  await assert.rejects(readInput(z.subarray(0, z.length >> 1), m),
+    (e) => e instanceof PatchError && e.kind === "bad-zip");
+  const flipped = z.slice();
+  flipped[200] ^= 0xff; // inside the deflated data
+  await assert.rejects(readInput(flipped, m), (e) => e instanceof PatchError && e.kind === "bad-zip");
 });
 
 test("padding that is not free is an internal error", async () => {

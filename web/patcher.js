@@ -19,7 +19,12 @@ export async function sha256Hex(bytes) {
 
 export async function readInput(bytes, m) {
   if (!isZip(bytes)) return bytes;
-  const upd = await findMember(bytes, m.upd_name);
+  let upd;
+  try {
+    upd = await findMember(bytes, m.upd_name);
+  } catch (e) {
+    throw new PatchError("bad-zip", `The zip file is damaged or cannot be read (${e.message}).`);
+  }
   if (!upd) throw new PatchError("not-package", `This zip has no ${m.upd_name}. It is not the CDJ-900 firmware package.`);
   return upd;
 }
@@ -53,8 +58,8 @@ export function rollbackUpd(upd, version) {
 
 const internal = (message) => new PatchError("internal", `Internal check failed: ${message}`);
 
+// progress(step) is called after the check of that step passed.
 export async function applyManifest(upd, m, progress = () => {}) {
-  progress("hash");
   const found = await sha256Hex(upd);
   if (found !== m.upd_sha256)
     throw new PatchError("wrong-version", `This tool needs firmware ${m.firmware}. Other versions are not supported.`,
@@ -63,11 +68,11 @@ export async function applyManifest(upd, m, progress = () => {}) {
   if (m.format !== 1 || m.app_region !== U.APP_REGION || m.app_region_end !== U.APP_REGION_END
       || m.app_base !== U.APP_BASE || L.n !== U.LZ_N || L.f !== U.LZ_F || L.min !== U.LZ_MIN || L.chain !== U.LZ_CHAIN)
     throw internal("the manifest does not match this patcher");
+  progress("hash");
 
-  progress("rollback");
   const rollback = rollbackUpd(upd, m.rollback_version);
+  progress("rollback");
 
-  progress("unpack");
   let flash, app;
   try {
     flash = U.decodeUpd(upd);
@@ -81,8 +86,8 @@ export async function applyManifest(upd, m, progress = () => {}) {
     if (o < 0 || o >= app.length) throw internal(`0x${addr.toString(16)} is outside the application image`);
     return o;
   };
+  progress("unpack");
 
-  progress("edit");
   for (const [lo, hi] of m.free) {
     if (app.subarray(at(lo), at(hi)).some((b) => b !== 0xff))
       throw internal(`padding 0x${lo.toString(16)}..0x${hi.toString(16)} is not free`);
@@ -102,8 +107,8 @@ export async function applyManifest(upd, m, progress = () => {}) {
     app.set(nw, o);
   }
   U.fixImageSum(app);
+  progress("edit");
 
-  progress("pack");
   let patched;
   try {
     const newFlash = U.buildFlash(flash, app);
@@ -111,8 +116,8 @@ export async function applyManifest(upd, m, progress = () => {}) {
   } catch (e) {
     throw internal(e.message);
   }
+  progress("pack");
 
-  progress("self-check");
   try {
     const check = U.decodeUpd(patched);
     const checkApp = U.unpackRegion(check, m.app_region);
@@ -123,5 +128,6 @@ export async function applyManifest(upd, m, progress = () => {}) {
   } catch (e) {
     throw internal(`self-check: ${e.message}`);
   }
+  progress("self-check");
   return { patched, rollback };
 }
