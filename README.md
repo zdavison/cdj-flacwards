@@ -4,7 +4,7 @@ FLAC playback for the Pioneer DJ CDJ-900.
 
 The CDJ-900 (2009) plays MP3, AAC, WAV and AIFF files from USB devices. rekordbox can export FLAC tracks to a USB device. The CDJ-900 shows these tracks, but it cannot load them.
 
-This project adds a patch to the CDJ-900 MAIN firmware 4.32. The patch decodes FLAC on the CPU of the player. Then the patch sends the decoded audio to the WAV playback of the player. The stock firmware still controls these functions:
+This project adds a patch to the CDJ-900 MAIN firmware 4.32. The patch decodes FLAC on the CPU of the player. Then the patch sends the decoded audio to the WAV playback of the player.
 
 > **Warning:** Do not install this patch if you cannot accept the risk of an unusable player. A firmware update can make a player unusable. A modified firmware can also void the warranty of the player. Read "Safety" before you install the patch. You use this project at your own risk. The project gives no warranty.
 
