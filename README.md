@@ -170,3 +170,9 @@ The patch does not run during start-up. The patch runs only when a track loads o
 ## License
 
 The code of this project uses the MIT license (see `LICENSE`). Some files use other licenses. `THIRD_PARTY.md` lists these files and their licenses.
+
+## Thanks
+
+This project would not be possible without the excellent work of:
+- [CDJ2000-emulator](https://github.com/cdj2k-revival/cdj2000-emulator): Without this, it would have been impossible to iterate quickly.
+- [dr_libs](https://github.com/mackron/dr_libs): Very useful to have a lightweight FLAC decoder already usable.
