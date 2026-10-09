@@ -9,14 +9,18 @@ running version. The running version is the "4.32" string at 0x04000740.
 
 hello:    a data-only change. The deck shows version 4.33 and date 20261008,
           and the padding gets an inert marker. No new code runs.
-rollback: the stock application in a file with header version 4.99. After the
-          update the deck reports 4.32 again.
+rollback: the official file with only the header version set to 4.99 (Pioneer's
+          S-records unchanged). After the update the deck reports 4.32 again.
+release:  the release blob, applied through the manifest (as the browser does).
+manifest: out/web/cdj900-4.32.json for the browser patcher (needs no firmware).
 flac:     the FLAC hooks (build/flac.bin) and the console command "N,VW".
           20 literal-pool words point at the wrappers. No instruction changes.
 """
 from __future__ import annotations
 
+import base64
 import hashlib
+import json
 import sys
 from pathlib import Path
 
@@ -25,7 +29,10 @@ import upd  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 STOCK_UPD = ROOT / "firmware/CDJ-900v432/C900MAIN.UPD"
-STOCK_SHA256 = "75f428732586d282"  # prefix of sha256(C900MAIN.UPD) for v4.32
+STOCK_SHA256 = "75f428732586d28289f9f83afbee7d79ef619568e7e2f81f54d666f628898258"  # C900MAIN.UPD 4.32
+RELEASE_VERSION = "4.44"
+ROLLBACK_VERSION = "4.99"
+RELEASE_DATE = b"20261008\0"
 
 VERSION_ADDR = 0x04000740
 DATE_ADDR = 0x04000760
@@ -235,9 +242,128 @@ def flac(hooks: bool = True, name: str = "flac", version: str = "4.35", enabled:
     write(name, flash, bytes(app), version)
 
 
+def manifest_data(blob: bytes, syms: dict[str, int], version: str = RELEASE_VERSION,
+                  sha256: str = STOCK_SHA256) -> dict:
+    """The release patch as data, for the browser patcher and apply_manifest().
+    It holds our blob and only the expected stock bytes of each edit, no
+    firmware content."""
+    if min(syms.values()) != BLOB_ADDR:
+        raise ValueError("the blob does not start at BLOB_ADDR")
+    return {
+        "format": 1,
+        "model": "CDJ-900",
+        "firmware": "4.32",
+        "upd_name": "C900MAIN.UPD",
+        "upd_sha256": sha256,
+        "patched_version": version,
+        "rollback_version": ROLLBACK_VERSION,
+        "app_region": upd.APP_REGION,
+        "app_region_end": upd.APP_REGION_END,
+        "app_base": upd.APP_BASE,
+        "lzss": {"n": upd.LZ_N, "f": upd.LZ_F, "min": upd.LZ_MIN, "chain": 32},
+        "blob_addr": BLOB_ADDR,
+        "blob": base64.b64encode(blob).decode("ascii"),
+        "free": [[BLOB_ADDR, BLOB_ADDR + len(blob)]],
+        "words": [[slot, old, syms[name]] for slot, old, name in FLAC_HOOKS],
+        "bytes": [[VERSION_ADDR, b"4.32\0".hex(), (version.encode("ascii") + b"\0").hex()],
+                  [DATE_ADDR, b"20140325\0".hex(), RELEASE_DATE.hex()]],
+    }
+
+
+def rollback_upd(upd_file: bytes, version: str) -> bytes:
+    """The official file with only the header version changed. Pioneer's
+    S-records and packed firmware stay byte for byte. The updater takes it over
+    any patched version, because its header version is higher."""
+    if upd_file[:upd.HEADER_SIZE] != upd.header(upd_file[19:23].decode("ascii")):
+        raise ValueError("unexpected header")
+    body = upd.header(version) + upd_file[upd.HEADER_SIZE:-2]
+    return body + upd.crc16_xmodem(body).to_bytes(2, "little")
+
+
+def apply_manifest(upd_file: bytes, m: dict) -> tuple[bytes, bytes]:
+    """Return (patched, rollback) update files for the official file. The
+    browser patcher (web/patcher.js) does the same steps in the same order."""
+    if hashlib.sha256(upd_file).hexdigest() != m["upd_sha256"]:
+        raise ValueError("this is not the firmware that the manifest is for")
+    rollback = rollback_upd(upd_file, m["rollback_version"])
+    flash = upd.decode_upd(upd_file)
+    app = bytearray(upd.unpack_region(flash, m["app_region"]))
+    if not upd.check_image_sum(app):
+        raise ValueError("stock image sum mismatch")
+
+    def at(addr: int) -> int:
+        o = (addr & 0x1FFFFFFF) - m["app_base"]
+        if not 0 <= o < len(app):
+            raise ValueError(f"{addr:#x} is outside the application image")
+        return o
+
+    for lo, hi in m["free"]:
+        if any(b != 0xFF for b in app[at(lo):at(hi)]):
+            raise ValueError(f"padding {lo:#x}..{hi:#x} is not free")
+    blob = base64.b64decode(m["blob"])
+    o = at(m["blob_addr"])
+    app[o:o + len(blob)] = blob
+    for addr, old, new in m["words"]:
+        o = at(addr)
+        if int.from_bytes(app[o:o + 4], "little") != old:
+            raise ValueError(f"{addr:#x}: unexpected stock word")
+        app[o:o + 4] = new.to_bytes(4, "little")
+    for addr, old_hex, new_hex in m["bytes"]:
+        old, new = bytes.fromhex(old_hex), bytes.fromhex(new_hex)
+        o = at(addr)
+        if app[o:o + len(old)] != old or len(new) != len(old):
+            raise ValueError(f"{addr:#x}: unexpected stock bytes")
+        app[o:o + len(new)] = new
+    upd.fix_image_sum(app)
+    new_flash = upd.build_flash(flash, bytes(app))
+    patched = upd.encode_upd(new_flash, m["patched_version"], len(new_flash))
+    check = upd.decode_upd(patched)
+    if upd.unpack_region(check, m["app_region"]) != bytes(app):
+        raise ValueError("self-check: the new file does not unpack to the patched image")
+    if not upd.check_image_sum(upd.unpack_region(check, m["app_region"])):
+        raise ValueError("self-check: image sum wrong in the new file")
+    if check[:m["app_region"]] != flash[:m["app_region"]]:
+        raise ValueError("self-check: boot ROM or loader changed")
+    return patched, rollback
+
+
+def write_upd(name: str, file: bytes) -> Path:
+    """Write out/NAME/C900MAIN.UPD and the flash image for the emulator."""
+    out = ROOT / "out" / name / "C900MAIN.UPD"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_bytes(file)
+    (out.parent / "main-firmware.bin").write_bytes(upd.decode_upd(file))
+    print(f"{out}  {len(file)} bytes  header {file[19:23].decode()}  "
+          f"sha256 {hashlib.sha256(file).hexdigest()[:16]}")
+    return out
+
+
+def release_manifest() -> dict:
+    blob = (ROOT / "build/flac-release.bin").read_bytes()
+    syms = symbols(ROOT / "build/flac-release.sym")
+    return manifest_data(blob, syms)
+
+
+def release() -> None:
+    """The release update file, made from the manifest (as the browser does)."""
+    patched, _ = apply_manifest(STOCK_UPD.read_bytes(), release_manifest())
+    write_upd("release", patched)
+
+
+def manifest() -> None:
+    """Write out/web/cdj900-4.32.json for the browser patcher. Needs no firmware."""
+    out = ROOT / "out/web/cdj900-4.32.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(release_manifest()))
+    print(f"{out}  {out.stat().st_size} bytes")
+
+
 def rollback() -> None:
-    flash, app = load_stock()
-    write("rollback", flash, bytes(app), "4.99")
+    """The official file with header version 4.99 (see rollback_upd)."""
+    data = STOCK_UPD.read_bytes()
+    if hashlib.sha256(data).hexdigest() != STOCK_SHA256:
+        raise ValueError("C900MAIN.UPD is not the v4.32 file this tool was written for")
+    write_upd("rollback", rollback_upd(data, ROLLBACK_VERSION))
 
 
 if __name__ == "__main__":
@@ -257,5 +383,7 @@ if __name__ == "__main__":
      "deck7": lambda: flac(name="deck7", version="4.42", stats=True),
      # release: the hooks only (no console commands, no statistics). 4.43 added
      # the damaged-frame resume, no brute force seek, and faster memcpy/convert.
-     "release": lambda: flac(name="release", version="4.44", release=True),
+     "release": release,
+     "release-old": lambda: flac(name="release-old", version=RELEASE_VERSION, release=True),
+     "manifest": manifest,
      "rollback": rollback}[sys.argv[1]]()

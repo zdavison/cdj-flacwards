@@ -99,10 +99,19 @@ check-abi: $(FLAC_SRCS)
 	python3 tests/check_abi.py $(CC) $(CFLAGS) -DFLAC_STATS -- $(FLAC_SRCS)
 	python3 tests/check_abi.py $(CC) $(CFLAGS) -- $(REL_SRCS)
 
+# The browser patcher tests. The fake firmware needs no Pioneer files.
+build/webtest/.done: tests/fake_firmware.py tools/upd.py tools/build_patch.py
+	@mkdir -p build/webtest
+	python3 tests/fake_firmware.py build/webtest
+	touch $@
+
+test-web: build/webtest/.done
+	python3 tests/test_manifest.py build/webtest
+
 clean:
 	rm -rf build/obj build/obj-rel build/blob.* build/host_fltest build/flac.* build/host_vwav build/test_vfs_hook build/abi_open build/test_rt
 
-.PHONY: all clean test test-host check-abi
+.PHONY: all clean test test-host test-web check-abi
 
 build/obj/%.o: src/%.S
 	@mkdir -p build/obj
