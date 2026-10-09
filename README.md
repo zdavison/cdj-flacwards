@@ -6,12 +6,18 @@ The CDJ-900 (2009) plays MP3, AAC, WAV and AIFF files from USB devices. rekordbo
 
 This project adds a patch to the CDJ-900 MAIN firmware 4.32. The patch decodes FLAC on the CPU of the player. Then the patch sends the decoded audio to the WAV playback of the player.
 
-> **Warning:** Do not install this patch if you cannot accept the risk of an unusable player. A firmware update can make a player unusable. A modified firmware can also void the warranty of the player. Read "Safety" before you install the patch. You use this project at your own risk. The project gives no warranty.
+> [!WARNING]
+> Do not install this patch if you cannot accept the risk of an unusable player.\
+> A firmware update can make a player unusable.\
+> A modified firmware can also void the warranty of the player.\
+> Read "Safety" before you install the patch.\
+> You use this project at your own risk.\
+> The project gives no warranty.
 
 This project has no affiliation with AlphaTheta Corporation, Pioneer DJ or Pioneer Corporation. These companies do not endorse or support this project. They did not approve this modification. "Pioneer DJ", "Pioneer", "CDJ" and "rekordbox" are trademarks of their owners. This document uses these names only to identify the hardware and the file formats.
 
-> [!WARNING]
-> LINK mode is as of yet unsupported. Your FLACs will load on one player but not on a LINKed player.
+> [!NOTE]
+> LINK mode is as of yet unsupported. Your FLACs will load on one player but not on a LINKed player.\
 > This feature will come very soon once I fix my 2nd CDJ-900's ethernet port.
 
 ## Quickstart
