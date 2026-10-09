@@ -30,9 +30,9 @@ We tested the patch on one CDJ-900 with firmware 4.32.
 | Search and jumps, forward and backward | ✅ | ✅ | ✅ |
 | Hot cues | ✅ | ❌ | — |
 | **FLAC files** | | | |
-| 44.1 kHz or 48 kHz, 16-bit or 24-bit, stereo | ✅ | ❔ | ✅ |
-| Files without a seek table | ✅ | ❔ | ✅ |
-| Files with embedded artwork | ✅ | ❔ | ✅ |
+| 44.1 kHz or 48 kHz, 16-bit or 24-bit, stereo | ✅ | ✅ | ✅ |
+| Files without a seek table | ✅ | ✅ | ✅ |
+| Files with embedded artwork | ✅ | ✅ | ✅ |
 | Damaged files: silence for the damaged frames, then playback continues | ✅ | ❔ | ✅ |
 | Mono files | ❌ | — | ✅ |
 | More than two channels | ❌ | — | ❌ |
