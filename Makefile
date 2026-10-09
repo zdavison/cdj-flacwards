@@ -107,6 +107,7 @@ build/webtest/.done: tests/fake_firmware.py tools/upd.py tools/build_patch.py
 
 test-web: build/webtest/.done
 	python3 tests/test_manifest.py build/webtest
+	node --test tests/web/
 
 clean:
 	rm -rf build/obj build/obj-rel build/blob.* build/host_fltest build/flac.* build/host_vwav build/test_vfs_hook build/abi_open build/test_rt
